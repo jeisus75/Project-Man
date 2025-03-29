@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Construction Site Dashboard - Real-time project management for field teams">
+    <meta name="theme-color" content="#3498db">
+    <title>Construction Site Dashboard</title>
+    
+    <!-- Manifest for PWA -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="assets/img/icon-192.png">
+    
+    <!-- Stylesheets -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1>Construction Site Dashboard</h1>
+                <div class="connection-status">
+                    <span id="onlineStatus" class="status-indicator online">
+                        <i class="fas fa-wifi"></i> Online
+                    </span>
+                    <span id="syncStatus" class="status-indicator">
+                        <i class="fas fa-sync-alt"></i> Last sync: <span id="lastSyncTime">Never</span>
+                    </span>
+                </div>
+            </div>
+            <div class="filters">
+                <select id="siteFilter" class="form-select">
+                    <option value="all">All Sites</option>
+                    <!-- Sites will be populated from Google Sheets -->
+                </select>
+                <button id="refreshBtn" class="btn btn-primary">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </header>
+
+        <!-- Key Metrics Panel -->
+        <section class="metrics-panel">
+            <div class="metric-card">
+                <div class="metric-icon">
+                    <i class="fas fa-hard-hat"></i>
+                </div>
+                <div class="metric-content">
+                    <h3>Active Sites</h3>
+                    <div class="metric-value" id="activeSites">--</div>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <div class="metric-content">
+                    <h3>Overall Progress</h3>
+                    <div class="metric-value" id="overallProgress">--%</div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="overallProgressBar" style="--progress: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="metric-content">
+                    <h3>Issues</h3>
+                    <div class="metric-value" id="issuesCount">--</div>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon">
+                    <i class="fas fa-tools"></i>
+                </div>
+                <div class="metric-content">
+                    <h3>Equipment</h3>
+                    <div class="metric-value" id="equipmentCount">--</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Dashboard Grid -->
+        <div class="dashboard-grid">
+            <!-- Site Progress -->
+            <section class="dashboard-item progress-section">
+                <div class="item-header">
+                    <h2>Site Progress</h2>
+                    <div class="item-actions">
+                        <button class="btn-item-action" id="exportProgressBtn">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="item-body">
+                    <div id="siteProgressList" class="progress-list">
+                        <!-- Progress bars will be populated from Google Sheets -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Photo Gallery -->
+            <section class="dashboard-item gallery-section">
+                <div class="item-header">
+                    <h2>Site Photos</h2>
+                    <div class="item-actions">
+                        <button class="btn-item-action" id="viewAllPhotosBtn">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="item-body">
+                    <div id="photoGallery" class="photo-gallery">
+                        <!-- Photos will be populated from Telegram/Storage -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Map -->
+            <section class="dashboard-item map-section">
+                <div class="item-header">
+                    <h2>Site Locations</h2>
+                    <div class="item-actions">
+                        <button class="btn-item-action" id="locateBtn">
+                            <i class="fas fa-location-arrow"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="item-body">
+                    <div id="siteMap"></div>
+                </div>
+            </section>
+
+            <!-- Equipment Tracking -->
+            <section class="dashboard-item equipment-section">
+                <div class="item-header">
+                    <h2>Equipment Tracking</h2>
+                    <div class="item-actions">
+                        <button class="btn-item-action" id="scanQRBtn">
+                            <i class="fas fa-qrcode"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="item-body">
+                    <div id="equipmentList" class="equipment-list">
+                        <!-- Equipment will be populated from Google Sheets -->
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Recent Updates Section -->
+        <section class="updates-section">
+            <div class="item-header">
+                <h2>Recent Updates</h2>
+                <div class="item-actions">
+                    <button class="btn-item-action" id="viewAllUpdatesBtn">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="item-body">
+                <div id="updatesList" class="updates-list">
+                    <!-- Updates will be populated from Google Sheets / Telegram -->
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- QR Scanner Modal -->
+    <div class="modal fade" id="qrScannerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Scan Equipment QR Code</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="qrScanner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Photo Viewer Modal -->
+    <div class="modal fade" id="photoViewerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Site Photos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="photoViewer" class="photo-viewer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Telegram Bot Info Modal -->
+    <div class="modal fade" id="telegramInfoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Telegram Bot Instructions</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Use our Telegram bot to update site progress and upload photos:</p>
+                    <ol>
+                        <li>Open Telegram and search for <strong>@ConstructionSiteBot</strong></li>
+                        <li>Start a conversation with the bot</li>
+                        <li>Use the following commands:
+                            <ul>
+                                <li><code>/progress [site] [%]</code> - Update site completion</li>
+                                <li><code>/photo [site]</code> - Upload a site photo</li>
+                                <li><code>/where [equipment]</code> - Report equipment location</li>
+                                <li><code>/issue [site] [description]</code> - Report an issue</li>
+                                <li><code>/help</code> - Show all available commands</li>
+                            </ul>
+                        </li>
+                    </ol>
+                    <div class="text-center mt-3">
+                        <img src="assets/img/telegram-qr.png" alt="Telegram Bot QR Code" class="telegram-qr">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Install App Prompt -->
+    <div id="installPrompt" class="install-prompt">
+        <div class="install-content">
+            <p><i class="fas fa-mobile-alt"></i> Install this app on your device for offline access</p>
+            <button id="installBtn" class="btn btn-sm btn-primary">Install</button>
+            <button id="dismissInstallBtn" class="btn btn-sm btn-link">Not now</button>
+        </div>
+    </div>
+
+    <!-- Floating Action Button -->
+    <button id="fabBtn" class="fab-button">
+        <i class="fas fa-plus"></i>
+    </button>
+    <div id="fabMenu" class="fab-menu">
+        <button class="fab-menu-item" id="updateProgressBtn">
+            <i class="fas fa-tasks"></i> Update Progress
+        </button>
+        <button class="fab-menu-item" id="uploadPhotoBtn">
+            <i class="fas fa-camera"></i> Upload Photo
+        </button>
+        <button class="fab-menu-item" id="reportIssueBtn">
+            <i class="fas fa-exclamation-triangle"></i> Report Issue
+        </button>
+        <button class="fab-menu-item" id="telegramBtn">
+            <i class="fab fa-telegram"></i> Telegram Bot
+        </button>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    
+    <!-- App Scripts -->
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/ui.js"></script>
+    <script src="assets/js/map.js"></script>
+    <script src="assets/js/storage.js"></script>
+    <script src="assets/js/app.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registered with scope:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.error('Service Worker registration failed:', error);
+                    });
+            });
+        }
+    </script>
+</body>
+</html>
